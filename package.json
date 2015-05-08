@@ -1,0 +1,19 @@
+{
+  "name": "simple-json-validator",
+  "version": "1.0.0",
+  "description": "Simple Json Validator",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --harmony --recursive",
+    "test-watch": "mocha -w --harmony"
+  },
+  "dependencies": {
+  "lodash": "^3.8.0"
+  },
+  "devDependencies": {
+    "mocha": "^2.2.4",
+    "should": "^6.0.1"
+  },
+  "author": "Ali Najafizadeh",
+  "license": "BSD"
+}

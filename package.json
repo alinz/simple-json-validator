@@ -15,5 +15,12 @@
     "should": "^6.0.1"
   },
   "author": "Ali Najafizadeh",
-  "license": "BSD"
+  "license": "BSD",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alinz/simple-json-validator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alinz/simple-json-validator/issues"
+  }
 }

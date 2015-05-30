@@ -15,15 +15,15 @@ describe('validate complex array json', function () {
       }
     ];
     var schema = {
-      type: Array,
+      type: 'array',
       content: {
-        type: Object,
+        type: 'object',
         content: {
           username: {
-            type: String
+            type: 'string'
           },
           password: {
-            type: String
+            type: 'string'
           }
         }
       }
@@ -44,17 +44,17 @@ describe('validate complex array json', function () {
       }
     ];
     var schema = {
-      type: Array,
+      type: 'array',
       content: {
-        type: Object,
+        type: 'object',
         content: {
           username: {
-            type: String,
+            type: 'string',
             min: 2,
             max: 8
           },
           password: {
-            type: String
+            type: 'string'
           }
         }
       }
@@ -63,7 +63,7 @@ describe('validate complex array json', function () {
     try{
       jsonValidator(json, schema);
     } catch(err) {
-      if (err.message !== 'username is not in the range') {
+      if (err.message !== 'username is not in the defined range') {
         throw err;
       }
     }

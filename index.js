@@ -2,300 +2,250 @@
 
 var _ = require('lodash');
 
-/*
- // [{},{}]
- // type: Array, Object, Number, String, Boolean, null
+function either(v1, v2) {
+  return typeof v1 === 'undefined'? v2 : v1;
+}
 
- var arraySample = {
- type: Array,
+function applyDefaultValue(schema, key, defaultValue) {
+  schema[key] = either(schema[key], defaultValue);
+}
 
- //default value is any length
- min: 0,
- max: 100,
+function setDefaultValueForSchema(schema) {
+  if (schema.done) {
+    return schema;
+  }
 
+  switch (schema.type) {
+    case 'number':
+      applyDefaultValue(schema, 'min', Number.MIN_VALUE);
+      applyDefaultValue(schema, 'max', Number.MAX_VALUE);
+      applyDefaultValue(schema, 'float', false);
+      applyDefaultValue(schema, 'convertByForce', true);
+      applyDefaultValue(schema, 'isRequired', false);
 
- content: {
- type: Number,
- min: 0,
- max: 100,
- float: true, false
- convertByForce: true, // parseInt(value, 10), parseFloat(value, 10)
- canBeNull: true,
- isRequired: true
- },
+      schema.done = true;
+      break;
 
+    case 'string':
+      applyDefaultValue(schema, 'min', 0);
+      applyDefaultValue(schema, 'max', Number.MAX_VALUE);
+      applyDefaultValue(schema, 'pattern', null);
+      applyDefaultValue(schema, 'convertByForce', true);
+      applyDefaultValue(schema, 'isRequired', false);
 
+      schema.done = true;
+      break;
 
- content: {
- type: String,
- min: 2,
- max: 20,
- pattern: '',
- convertByForce: true,
- canBeNull: true,
- isRequired: true
- }
+    case 'boolean':
+      applyDefaultValue(schema, 'convertByForce', true);
+      applyDefaultValue(schema, 'isRequired', false);
 
- content: {
- type: Boolean,
- convertByForce: true,  //!! -> Boolean null -> false, 0 -> false, 1 -> true, "" -> true
- isRequired: true
- }
+      schema.done = true;
+      break;
 
- content: {
- type: Object,
- content: {
- username: {
- type: String,
- min: 2,
- max: 20,
- pattern: 'regular expression pattern',
- convertByForce: true,
- canBeNull: true,
- isRequired: true
- }
- }
- }
- };
+    case 'object':
+      applyDefaultValue(schema, 'isRequired', false);
 
- var objectSample = {
- type: Object,
- content: {
+      schema.done = true;
+      break;
 
- }
- };
+    case 'array':
+      applyDefaultValue(schema, 'min', 0);
+      applyDefaultValue(schema, 'max', Number.MAX_VALUE);
+      applyDefaultValue(schema, 'isRequired', false);
+
+      schema.done = true;
+      break;
+
+    default:
+      throw new Error('unknow type in schema');
+  }
+}
+
+function error(label, message) {
+  throw new Error(label + ' ' + message);
+}
+
+/**
+ * label string
+ * value number
+ * schema object
  */
+function validateNumber(label, value, schema) {
+  setDefaultValueForSchema(schema);
 
-function valid(value, type) {
-  return type === typeof value;
-}
-
-function updateSchema(schema) {
-  if (!valid(schema.min, 'number')) {
-    if (schema.type === Array || schema.type === String) {
-      schema.min = 0;
-    } else {
-      schema.min = Number.MIN_VALUE;
-    }
-  }
-
-  if (!valid(schema.max, 'number')) {
-    schema.max = Number.MAX_VALUE;
-  }
-
-  if (!valid(schema.float, 'boolean')) {
-    schema.float = false;
-  }
-
-  if (!valid(schema.convertByForce, 'boolean')) {
-    schema.convertByForce = false;
-  }
-
-  if (!valid(schema.canBeNull, 'boolean')) {
-    schema.canBeNull = false;
-  }
-
-  if (!valid(schema.isRequired, 'boolean')) {
-    schema.isRequired = false;
-  }
-
-  if (!valid(schema.pattern, 'object')) {
-    schema.pattern = false;
-  }
-
-  return schema;
-}
-
-function number(value, schema, label) {
-  label = label || 'value';
-  schema = updateSchema(schema);
-  /*
-   type: Number,
-
-   canBeNull: true,
-   float: true, false
-   convertByForce: true, // parseInt(value, 10), parseFloat(value, 10)
-
-   isRequired: true
-   min: 0,
-   max: 100,
-   */
-
-  if (schema.canBeNull && value === null) {
-    value = 0;
+  if (schema.isRequired && typeof value === "undefined") {
+    error(label, 'is required');
   }
 
   if (schema.convertByForce) {
-    value = schema.float? parseFloat(value) : parseInt(value, 10);
-
-    if (isNaN(value)) {
-      throw new Error(label + ' is not a number type');
+    if (schema.float) {
+      value = parseFloat(value);
+    } else {
+      value = parseInt(value, 10);
     }
   }
 
-  if (!valid(value, 'number')) {
-    throw new Error(label + ' is not a number');
+  if (!_.isNumber(value)) {
+    error(label, 'is not a number');
   }
 
-  if (schema.isRequired) {
-    if (!valid(value, 'number')) {
-      throw new Error(label + ' is required');
-    }
-  }
-
-  if (!(value >= schema.min && value <= schema.max)) {
-    throw new Error(label + ' is not in the range');
+  if (!(schema.min <= value && value <= schema.max)) {
+    error(label, 'is not in the defined range');
   }
 
   return value;
 }
 
-function string(value, schema, label) {
-  label = label || 'value';
-  schema = updateSchema(schema);
-  /*
-   type: String,
-   min: 2,
-   max: 20,
-   pattern: 'regular expression pattern',
-   convertByForce: true,
-   canBeNull: true,
-   isRequired: true
-   */
+/**
+ * label string
+ * value string
+ * schema object
+ */
+function validateString(label, value, schema) {
+  var isString,
+      strLen;
 
-  if (schema.isRequired && !valid(value, 'string')) {
-    throw new Error(label + ' is not a string type');
+  setDefaultValueForSchema(schema);
+
+  if (schema.isRequired && typeof value === "undefined") {
+    error(label, 'is required');
   }
 
-  if (schema.canBeNull && value === null) {
-    value = '';
+  isString = _.isString(value)
+
+  if (schema.convertByForce && !isString) {
+    value += '';
   }
 
-  if (schema.convertByForce) {
-    if (valid(value, 'undefined')) {
-      value = '';
-    } else {
-      value = value + '';
+  if (isString) {
+    strLen = value.length;
+
+    if (!(schema.min <= strLen && strLen <= schema.max)) {
+      error(label, 'is not in the defined range');
     }
-  }
 
-  if (!(value.length >= schema.min && value.length <= schema.max)) {
-    throw new Error(label + ' is not in the range');
-  }
-
-  if (schema.pattern) {
-    if (!schema.pattern.test(value)) {
-      throw new Error('pattern is not a match for ' + label);
+    if (schema.pattern && !schema.pattern.test(value)) {
+      error(label, 'is not match the defined pattern');
     }
   }
 
   return value;
 }
 
-function boolean(value, schema, label){
-  label = label || 'value';
-  schema = updateSchema(schema);
+/**
+ * label string
+ * value string
+ * schema object
+ */
+function validateBoolean(label, value, schema) {
+  setDefaultValueForSchema(schema);
 
-  /*
-   type: Boolean,
-   convertByForce: true,  //!! -> Boolean null -> false, 0 -> false, 1 -> true, "" -> true
-   isRequired: true
-   */
+  if (schema.isRequired && typeof value === "undefined") {
+    error(label, 'is required');
+  }
 
-  if (schema.convertByForce && !valid(value, 'undefined')) {
+  if (schema.convertByForce) {
     value = !!value;
   }
 
-  if (schema.isRequired && valid(value, 'undefined')) {
-    throw new Error(label + ' is required');
-  }
-
   return value;
 }
 
-function select(value, schema, label) {
-  if (_.isNumber(value)) {
-    return number(value, schema, label);
-  } else if (_.isString(value)) {
-    return string(value, schema, label);
-  } else if (_.isBoolean(value)) {
-    return boolean(value, schema, label);
-  } else if (_.isArray(value)) {
-    return array(value, schema, label);
-  } else if (_.isPlainObject(value)) {
-    return object(value, schema, label);
-  } else {
-    throw new Error('type unknown');
-  }
-}
+/**
+ * label string
+ * arr array
+ * schema object
+ */
+function validateArray(label, arr, schema) {
+  var isUndefined,
+      arrLen;
 
-function array(value, schema, label) {
-  label = label || 'value';
-  schema = updateSchema(schema);
+  setDefaultValueForSchema(schema);
 
-  /*
-   isRequired
-   canBeNull
-   min
-   max
-   */
+  isUndefined = typeof arr === 'undefined';
 
-  if (schema.isRequired && !Array.isArray(value)) {
-    throw new Error(label + ' is required to be an array type');
+  if (schema.isRequired && isUndefined) {
+    error(label, 'is required');
   }
 
-  if (schema.canBeNull && value === null) {
-    value = [];
+  if (isUndefined) {
+    return arr;
   }
 
-  if (!(value.length >= schema.min && value.length <= schema.max)) {
-    throw new Error(label + ' is not in the range');
+  if (!_.isArray(arr)) {
+    error(label, 'needs to be an array');
   }
 
-  //we need to go to all the items and recursively apply schema to each item
-  value = value.map(function (item) {
-    return select(item, schema.content);
+  arrLen = arr.length;
+
+  if (!(schema.min <= arrLen && arrLen <= schema.max)) {
+    error(label, 'is not in the defined range');
+  }
+
+  arr = _.map(arr, function (item) {
+    return select(label, item, schema.content);
   });
 
-  return value;
+  return arr;
 }
 
-function object(value, schema, label) {
-  label = label || 'value';
-  schema = updateSchema(schema);
+/**
+ * label string
+ * obj object
+ * schema object
+ */
+function validatePlainObject(label, obj, schema) {
+  var isUndefined;
 
-  /*
-   isRequired
-   canBeNull
-   */
+  setDefaultValueForSchema(schema);
 
-  if (schema.isRequired && !_.isPlainObject(value)) {
-    throw new Error(label + ' is required to be a plain object type');
+  isUndefined = typeof obj === 'undefined';
+
+  if (schema.isRequired && isUndefined) {
+    error(label, 'is required');
   }
 
-  if (schema.canBeNull && value === null) {
-    value = {};
+  if (isUndefined) {
+    return obj;
   }
 
-  var fieldSchemas = schema.content;
-  _.forEach(value, function (obj, field) {
-    var fieldSchema = fieldSchemas[field];
-    if (valid(fieldSchema, 'undefined')) {
-      throw new Error(label + 'is not recognisable');
-    }
+  if (!_.isPlainObject(obj)) {
+    error(label, 'is not an object');
+  }
 
-    value[field] = select(obj, fieldSchema, field);
+  _.forEach(obj, function (target, field) {
+    obj[field] = select(field, obj[field], schema.content[field]);
   });
 
-  return value;
+  return obj;
 }
 
-module.exports = function (json, schema) {
+function select(label, value, schema) {
+  switch (schema.type) {
+    case 'number':
+      return validateNumber(label, value, schema);
+    case 'boolean':
+      return validateBoolean(label, value, schema);
+    case 'string':
+      return validateString(label, value, schema);
+    case 'array':
+      return validateArray(label, value, schema);
+    case 'object':
+      return validatePlainObject(label, value, schema);
+    default:
+      error(label, 'schema type is invalid');
+  }
+}
+
+function simpleJsonValidator(json, schema) {
   if (_.isArray(json)) {
-    return array(json, schema);
+    return validateArray('root', json, schema);
   } else if (_.isPlainObject(json)) {
-    return object(json, schema);
+    return validatePlainObject('root', json, schema);
   } else {
     throw new Error('not a valid json');
   }
 };
+
+module.exports = simpleJsonValidator;

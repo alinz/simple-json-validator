@@ -214,14 +214,26 @@ function validatePlainObject(label, obj, schema) {
     error(label, 'is not an object');
   }
 
+  //check if incomming data matches schema
   _.forEach(obj, function (target, field) {
     obj[field] = select(field, obj[field], schema.content[field]);
+  });
+
+
+  //check if schema matches incoming data
+  _.forEach(schema.content, function (target, field) {
+    //console.log(field, target);
+    obj[field] = select(field, obj[field], target);
   });
 
   return obj;
 }
 
 function select(label, value, schema) {
+  if (!schema) {
+    error(label, 'not recognizable.');
+  }
+
   switch (schema.type) {
     case 'number':
       return validateNumber(label, value, schema);

@@ -61,4 +61,32 @@ describe('validate object', function () {
       }
     }
   });
+
+  it('should fail to validate because one of the field is missing', function () {
+    var json = {
+      username: 'johnny'
+    };
+
+    var schema = {
+      type: 'object',
+      content: {
+        username: {
+          type: 'string',
+          isRequired: true
+        },
+        password: {
+          type: 'string',
+          isRequired: true
+        }
+      }
+    };
+
+    try {
+      jsonValidator(json, schema);
+    } catch(err) {
+      if (err.message !== 'password is required') {
+        throw err;
+      }
+    }
+  });
 });

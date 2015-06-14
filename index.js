@@ -214,17 +214,19 @@ function validatePlainObject(label, obj, schema) {
     error(label, 'is not an object');
   }
 
-  //check if incomming data matches schema
-  _.forEach(obj, function (target, field) {
-    obj[field] = select(field, obj[field], schema.content[field]);
-  });
-
-
+  var isSchemaContentEmpty = true;
   //check if schema matches incoming data
   _.forEach(schema.content, function (target, field) {
-    //console.log(field, target);
+    isSchemaContentEmpty = false;
     obj[field] = select(field, obj[field], target);
   });
+
+  if (!isSchemaContentEmpty) {
+    //check if incoming data matches schema
+    _.forEach(obj, function (target, field) {
+      obj[field] = select(field, obj[field], schema.content[field]);
+    });
+  }
 
   return obj;
 }
